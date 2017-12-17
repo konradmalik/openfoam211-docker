@@ -12,3 +12,4 @@ RUN apt-get install -y sudo
 RUN apt-get install -y git
 RUN apt-get install -y mc
 RUN apt-get install -y gnuplot
+RUN apt-get install -y tmux
