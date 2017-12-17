@@ -13,3 +13,4 @@ RUN apt-get install -y git
 RUN apt-get install -y mc
 RUN apt-get install -y gnuplot
 RUN apt-get install -y tmux
+RUN apt-get install -y make
