@@ -39,5 +39,4 @@
 #------------------------------------------------------------------------------
 
 xhost +local:openfoam211
-docker start openfoam211
-docker exec -it openfoam211 /bin/bash -rcfile /opt/openfoam211/etc/bashrc
+docker start openfoam211 -i
