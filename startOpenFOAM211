@@ -26,7 +26,7 @@
 #
 # Description
 #      This script will
-#          1) Start the OpenFOAM container with name 'of_v1706'
+#          1) Start the OpenFOAM container with name 'openfoam211'
 #             in the the shell terminal. 
 #          2) Post-processing: Users can launch paraview/paraFoam from the
 #             terminal to post-process the results
