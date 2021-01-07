@@ -98,4 +98,4 @@ RUN $PIP_INSTALL PyFoam==2020.5
 RUN ldconfig && \
     apt-get clean && \
     apt-get -y autoremove && \
-    rm -rf /var/lib/apt/lists/* /tmp/* ~/*
+    rm -rf /var/lib/apt/lists/* /tmp/*
