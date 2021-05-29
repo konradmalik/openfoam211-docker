@@ -1,4 +1,4 @@
-FROM ubuntu:16.04
+FROM ubuntu:18.04
 # 18.04 does not work as it uses gcc 4.8 and it fails to build openfoam 211
 # even when following instructions on wiki for 18.04
 
@@ -12,10 +12,12 @@ SHELL ["/bin/bash", "-c"]
 
 # compile openfoam and install tools
 # prepare apps
-RUN eval $APT_INSTALL \
+RUN dpkg --add-architecture 'i386' \
+    && eval $APT_INSTALL \
     build-essential binutils-dev flex bison zlib1g-dev qt4-dev-tools libqt4-dev libqtwebkit-dev gnuplot \
     libreadline-dev libncurses-dev libxt-dev libopenmpi-dev openmpi-bin libboost-system-dev libboost-thread-dev libgmp-dev \
-    libmpfr-dev python python-dev libcgal-dev gcc-4.7 g++-4.7 libglu1-mesa-dev libqt4-opengl-dev \
+    libmpfr-dev python python-dev libcgal-dev gcc-4.8 g++-4.8 libglu1-mesa-dev libqt4-opengl-dev \
+    g++-4.8-multilib gcc-4.8-multilib linux-libc-dev linux-libc-dev:i386 linux-headers-generic \
     # my addition
     ca-certificates wget make cmake vim nano sudo git mc
 
@@ -31,23 +33,36 @@ RUN mkdir -p $HOME/OpenFOAM \
     && tar -xzf download/ParaView-3.12.0.tar.gz \
     && tar -xzf download/scotch_5.1.11.tar.gz \
     && cd .. \
-    && sed -i -e 's/gcc/gcc-4.7/' OpenFOAM-2.1.x/wmake/rules/linux64Gcc47/c \
-    && sed -i -e 's/g++/g++-4.7/' OpenFOAM-2.1.x/wmake/rules/linux64Gcc47/c++ \
-    && echo "export WM_CC='gcc-4.7'" >> OpenFOAM-2.1.x/etc/bashrc \
-    && echo "export WM_CXX='g++-4.7'" >> OpenFOAM-2.1.x/etc/bashrc \
-    && source $HOME/OpenFOAM/OpenFOAM-2.1.x/etc/bashrc WM_NCOMPPROCS=4 WM_MPLIB=SYSTEMOPENMPI WM_COMPILER=Gcc47 \
+    && sed -i -e 's/gcc/gcc-4.6/' OpenFOAM-2.1.x/wmake/rules/linux64Gcc46/c \
+    && sed -i -e 's/g++/g++-4.6/' OpenFOAM-2.1.x/wmake/rules/linux64Gcc46/c++ \
+    && echo "export WM_CC='gcc-4.6'" >> OpenFOAM-2.1.x/etc/bashrc \
+    && echo "export WM_CXX='g++-4.6'" >> OpenFOAM-2.1.x/etc/bashrc \
+    && source $HOME/OpenFOAM/OpenFOAM-2.1.x/etc/bashrc WM_NCOMPPROCS=4 WM_MPLIB=SYSTEMOPENMPI WM_COMPILER=Gcc46 \
     && echo "source \$HOME/OpenFOAM/OpenFOAM-2.1.x/etc/bashrc $FOAM_SETTINGS" >> $HOME/.bashrc \
     && cd $WM_PROJECT_DIR \
     && find src applications -name "*.L" -type f | xargs sed -i -e 's=\(YY\_FLEX\_SUBMINOR\_VERSION\)=YY_FLEX_MINOR_VERSION < 6 \&\& \1='
 
+# compile gcc 4.6
+RUN source $HOME/OpenFOAM/OpenFOAM-2.1.x/etc/bashrc WM_NCOMPPROCS=4 WM_MPLIB=SYSTEMOPENMPI WM_COMPILER=Gcc46 \
+    && cd $HOME/OpenFOAM/ThirdParty-2.1.x \
+    && wget https://mirror.dogado.de/gnu/gcc/gcc-4.6.1/gcc-4.6.1.tar.bz2 -P download \
+    && tar -xf download/gcc-4.6.1.tar.bz2 \
+    && wget ftp://ftp.gnu.org/gnu/gmp/gmp-5.0.2.tar.bz2 -P download \
+    && tar -xf download/gmp-5.0.2.tar.bz2 \
+    && wget ftp://ftp.gnu.org/gnu/mpfr/mpfr-3.0.1.tar.bz2 -P download \
+    && tar -xf download/mpfr-3.0.1.tar.bz2 \
+    && wget http://www.multiprecision.org/downloads/mpc-0.9.tar.gz -P download \
+    && tar -xf download/mpc-0.9.tar.gz \
+    && ./makeGcc gcc-4.6.1 gmp-5.0.2 mpfr-3.0.1 mpc-0.9
+
 # build openfoam
-RUN source $HOME/OpenFOAM/OpenFOAM-2.1.x/etc/bashrc WM_NCOMPPROCS=4 WM_MPLIB=SYSTEMOPENMPI WM_COMPILER=Gcc47 \
+RUN source $HOME/OpenFOAM/OpenFOAM-2.1.x/etc/bashrc WM_NCOMPPROCS=4 WM_MPLIB=SYSTEMOPENMPI WM_COMPILER=Gcc46 \
     && cd $WM_PROJECT_DIR \
     && ./Allwmake \
     && ./Allwmake
 
 # prepare 3rd party
-RUN source $HOME/OpenFOAM/OpenFOAM-2.1.x/etc/bashrc WM_NCOMPPROCS=4 WM_MPLIB=SYSTEMOPENMPI WM_COMPILER=Gcc47 \
+RUN source $HOME/OpenFOAM/OpenFOAM-2.1.x/etc/bashrc WM_NCOMPPROCS=4 WM_MPLIB=SYSTEMOPENMPI WM_COMPILER=Gcc46 \
     && cd $WM_THIRD_PARTY_DIR \
     && export QT_SELECT=qt4 \
     && wget https://cmake.org/files/v2.8/cmake-2.8.12.1.tar.gz -P download \
@@ -55,7 +70,7 @@ RUN source $HOME/OpenFOAM/OpenFOAM-2.1.x/etc/bashrc WM_NCOMPPROCS=4 WM_MPLIB=SYS
     && sed -i -e 's=/bin/sh=/bin/bash=' makeCmake \
     && ./makeCmake cmake-2.8.12.1 \
     && sed -i -e 's=cmake-2\.8\.4=cmake-2.8.12.1 cmake-2.8.4=' $WM_PROJECT_DIR/etc/config/paraview.sh \
-    && source $HOME/OpenFOAM/OpenFOAM-2.1.x/etc/bashrc WM_NCOMPPROCS=4 WM_MPLIB=SYSTEMOPENMPI WM_COMPILER=Gcc47 \
+    && source $HOME/OpenFOAM/OpenFOAM-2.1.x/etc/bashrc WM_NCOMPPROCS=4 WM_MPLIB=SYSTEMOPENMPI WM_COMPILER=Gcc46 \
     && sed -i -e 's=//#define GLX_GLXEXT_LEGACY=#define GLX_GLXEXT_LEGACY=' \
       ParaView-3.12.0/VTK/Rendering/vtkXOpenGLRenderWindow.cxx \
     && sed -i -e 's/ClearAndSelect = Clear | Select/ClearAndSelect = static_cast<int>(Clear) | static_cast<int>(Select)/' \
@@ -63,13 +78,13 @@ RUN source $HOME/OpenFOAM/OpenFOAM-2.1.x/etc/bashrc WM_NCOMPPROCS=4 WM_MPLIB=SYS
     && sed -i -e 's/\(export CXX.*$\)/\1\n[ -n "$WM_CC" ] \&\& export CC="$WM_CC"/' makeParaView
 
 # build paraview
-RUN source $HOME/OpenFOAM/OpenFOAM-2.1.x/etc/bashrc WM_NCOMPPROCS=4 WM_MPLIB=SYSTEMOPENMPI WM_COMPILER=Gcc47 \
+RUN source $HOME/OpenFOAM/OpenFOAM-2.1.x/etc/bashrc WM_NCOMPPROCS=4 WM_MPLIB=SYSTEMOPENMPI WM_COMPILER=Gcc46 \
     && cd $WM_THIRD_PARTY_DIR \
     && export QT_SELECT=qt4 \
     && ./makeParaView
 
 # build utilities
-RUN source $HOME/OpenFOAM/OpenFOAM-2.1.x/etc/bashrc WM_NCOMPPROCS=4 WM_MPLIB=SYSTEMOPENMPI WM_COMPILER=Gcc47 \
+RUN source $HOME/OpenFOAM/OpenFOAM-2.1.x/etc/bashrc WM_NCOMPPROCS=4 WM_MPLIB=SYSTEMOPENMPI WM_COMPILER=Gcc46 \
     && cd $FOAM_UTILITIES/postProcessing/graphics/PV3Readers \
     && ./Allwclean \
     && ./Allwmake
