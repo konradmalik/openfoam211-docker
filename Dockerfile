@@ -23,8 +23,8 @@ RUN eval $APT_INSTALL \
 # clone code
 RUN mkdir -p $HOME/OpenFOAM \
     && cd $HOME/OpenFOAM \
-    && git clone https://github.com/OpenFOAM/OpenFOAM-2.1.x.git \
-    && git clone https://github.com/OpenFOAM/ThirdParty-2.1.x.git
+    && git clone --depth 1 https://github.com/OpenFOAM/OpenFOAM-2.1.x.git \
+    && git clone --depth 1 https://github.com/OpenFOAM/ThirdParty-2.1.x.git
 
 # from now on we can use bachrc
 SHELL ["/bin/bash", "--rcfile", "/root/OpenFOAM/OpenFOAM-2.1.x/etc/bashrc", "-c"]
