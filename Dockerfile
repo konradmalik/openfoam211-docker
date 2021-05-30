@@ -78,9 +78,14 @@ RUN cd $FOAM_UTILITIES/postProcessing/graphics/PV3Readers \
     && ./Allwclean \
     && ./Allwmake
 
+# go back to normal shell
+SHELL ["/bin/sh", "-c"]
 # mv installation to opt (readable by all users)
 # bashrc will be in /opt/OpenFOAM/OpenFOAM-2.1.x/etc/bashrc
-RUN mv $HOME/OpenFOAM /opt/OpenFOAM
+RUN mv $HOME/OpenFOAM /opt/OpenFOAM \
+    && sed -i -e 's@foamInstall=$HOME@foamInstall=/opt@' /opt/OpenFOAM/OpenFOAM-2.1.x/etc/bashrc \
+    && rm -rf /root/.bashrc
+
 
 # python
 ENV PYTHON_COMPAT_VERSION=3.6
@@ -108,4 +113,4 @@ RUN ldconfig && \
     apt-get -y autoremove && \
     rm -rf /var/lib/apt/lists/* /tmp/*
 
-ENTRYPOINT ["/bin/bash", "--rcfile", "/root/OpenFOAM/OpenFOAM-2.1.x/etc/bashrc"]
+ENTRYPOINT ["/bin/bash", "--rcfile", "/opt/OpenFOAM/OpenFOAM-2.1.x/etc/bashrc"]

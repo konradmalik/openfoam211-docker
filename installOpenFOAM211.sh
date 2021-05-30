@@ -70,8 +70,8 @@ docker run  -it -d --name ${containerName} --user=${user}   \
     --volume="/etc/shadow:/etc/shadow:ro"                   \
     --volume="/etc/sudoers:/etc/sudoers:ro"                 \
     --volume="/etc/sudoers.d:/etc/sudoers.d:ro"             \
-     -v=/tmp/.X11-unix:/tmp/.X11-unix ${imageName}          \
-     /bin/bash --rcfile /opt/openfoam211/etc/bashrc
+    --volume=/tmp/.X11-unix:/tmp/.X11-unix                  \
+    ${imageName}
 
 
 echo "Container ${containerName} was created."
