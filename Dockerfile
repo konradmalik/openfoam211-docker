@@ -20,16 +20,13 @@ RUN eval $APT_INSTALL \
     # my addition
     ca-certificates wget make cmake vim nano sudo git mc
 
+SHELL ["/bin/bash", "-c"]
 # clone code
 RUN mkdir -p $HOME/OpenFOAM \
     && cd $HOME/OpenFOAM \
     && git clone --depth 1 https://github.com/OpenFOAM/OpenFOAM-2.1.x.git \
-    && git clone --depth 1 https://github.com/OpenFOAM/ThirdParty-2.1.x.git
-
-# from now on we can use bachrc
-SHELL ["/bin/bash", "--rcfile", "/root/OpenFOAM/OpenFOAM-2.1.x/etc/bashrc", "-c"]
-# prepare of21x
-RUN cd $HOME/OpenFOAM/ThirdParty-2.1.x \
+    && git clone --depth 1 https://github.com/OpenFOAM/ThirdParty-2.1.x.git \
+    && cd $HOME/OpenFOAM/ThirdParty-2.1.x \
     && mkdir download \
     && wget -P download http://www.paraview.org/files/v3.12/ParaView-3.12.0.tar.gz \
     && wget -P download https://gforge.inria.fr/frs/download.php/28043/scotch_5.1.11.tar.gz \
@@ -40,10 +37,16 @@ RUN cd $HOME/OpenFOAM/ThirdParty-2.1.x \
     && sed -i -e 's/g++/g++-4.7/' OpenFOAM-2.1.x/wmake/rules/linux64Gcc47/c++ \
     && echo "export WM_CC='gcc-4.7'" >> OpenFOAM-2.1.x/etc/bashrc \
     && echo "export WM_CXX='g++-4.7'" >> OpenFOAM-2.1.x/etc/bashrc \
+    && sed -i -e "s/WM_COMPILER=Gcc/WM_COMPILER=$WM_COMPILER/" OpenFOAM-2.1.x/etc/bashrc \
+    && sed -i -e "s/WM_MPLIB=OPENMPI/WM_MPLIB=$WM_MPLIB/" OpenFOAM-2.1.x/etc/bashrc \
+    && source $HOME/OpenFOAM/OpenFOAM-2.1.x/etc/bashrc \
     && echo "source \$HOME/OpenFOAM/OpenFOAM-2.1.x/etc/bashrc $FOAM_SETTINGS" >> $HOME/.bashrc \
     && cd $WM_PROJECT_DIR \
     && find src applications -name "*.L" -type f | xargs sed -i -e 's=\(YY\_FLEX\_SUBMINOR\_VERSION\)=YY_FLEX_MINOR_VERSION < 6 \&\& \1='
 
+# from now on we can use bachrc
+# dont use login shell as it causes errors
+SHELL ["/bin/bash", "--rcfile", "/root/.bashrc", "-ci"]
 # build openfoam
 # run twice to double check
 RUN cd $WM_PROJECT_DIR \
