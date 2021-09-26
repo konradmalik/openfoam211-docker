@@ -5,11 +5,7 @@ FROM ubuntu:16.04
 ENV LANG=C.UTF-8 \
     DEBIAN_FRONTEND=noninteractive \
     APT_INSTALL="apt-get update && apt-get install -y --no-install-recommends --fix-missing" \
-    PIP_INSTALL="python -m pip --no-cache-dir install --upgrade" \
-    WM_NCOMPPROCS=4 \
-    WM_MPLIB=SYSTEMOPENMPI \
-    WM_COMPILER=Gcc47
-
+    PIP_INSTALL="python -m pip --no-cache-dir install --upgrade" 
 
 # compile openfoam and install tools
 # prepare apps
@@ -21,36 +17,42 @@ RUN eval $APT_INSTALL \
     ca-certificates wget make cmake vim nano sudo git mc
 
 SHELL ["/bin/bash", "-c"]
+
+ARG WM_NCOMPPROCS=4
+ARG FOAM_INST_DIR=/opt/OpenFOAM
+ENV WM_NCOMPPROCS=${WM_NCOMPPROCS} \
+    FOAM_INST_DIR=${FOAM_INST_DIR} \
+    WM_MPLIB=SYSTEMOPENMPI \
+    WM_COMPILER=Gcc47
+
 # clone code
-RUN mkdir -p $HOME/OpenFOAM \
-    && cd $HOME/OpenFOAM \
+RUN mkdir -p $FOAM_INST_DIR \
+    && cd $FOAM_INST_DIR \
     && git clone --depth 1 https://github.com/OpenFOAM/OpenFOAM-2.1.x.git \
     && git clone --depth 1 https://github.com/OpenFOAM/ThirdParty-2.1.x.git \
-    && cd $HOME/OpenFOAM/ThirdParty-2.1.x \
+    && cd $FOAM_INST_DIR/ThirdParty-2.1.x \
     && mkdir download \
     && wget -P download http://www.paraview.org/files/v3.12/ParaView-3.12.0.tar.gz \
     && wget -P download https://gforge.inria.fr/frs/download.php/28043/scotch_5.1.11.tar.gz \
     && tar -xzf download/ParaView-3.12.0.tar.gz \
     && tar -xzf download/scotch_5.1.11.tar.gz \
-    && cd .. \
+    && cd $FOAM_INST_DIR \
     && sed -i -e 's/gcc/gcc-4.7/' OpenFOAM-2.1.x/wmake/rules/linux64Gcc47/c \
     && sed -i -e 's/g++/g++-4.7/' OpenFOAM-2.1.x/wmake/rules/linux64Gcc47/c++ \
     && echo "export WM_CC='gcc-4.7'" >> OpenFOAM-2.1.x/etc/bashrc \
     && echo "export WM_CXX='g++-4.7'" >> OpenFOAM-2.1.x/etc/bashrc \
     && sed -i -e "s/WM_COMPILER=Gcc/WM_COMPILER=$WM_COMPILER/" OpenFOAM-2.1.x/etc/bashrc \
     && sed -i -e "s/WM_MPLIB=OPENMPI/WM_MPLIB=$WM_MPLIB/" OpenFOAM-2.1.x/etc/bashrc \
-    && source $HOME/OpenFOAM/OpenFOAM-2.1.x/etc/bashrc \
-    && echo "source \$HOME/OpenFOAM/OpenFOAM-2.1.x/etc/bashrc $FOAM_SETTINGS" >> $HOME/.bashrc \
+    && source $FOAM_INST_DIR/OpenFOAM-2.1.x/etc/bashrc \
+    && echo "source \$FOAM_INST_DIR/OpenFOAM-2.1.x/etc/bashrc $FOAM_SETTINGS" >> /etc/bash.bashrc \
     && cd $WM_PROJECT_DIR \
     && find src applications -name "*.L" -type f | xargs sed -i -e 's=\(YY\_FLEX\_SUBMINOR\_VERSION\)=YY_FLEX_MINOR_VERSION < 6 \&\& \1='
 
-# from now on we can use bachrc
+# from now on we can use bashrc
 # dont use login shell as it causes errors
-SHELL ["/bin/bash", "--rcfile", "/root/.bashrc", "-ci"]
+SHELL ["/bin/bash", "--rcfile", "/etc/bash.bashrc", "-ci"]
 # build openfoam
-# run twice to double check
 RUN cd $WM_PROJECT_DIR \
-    && ./Allwmake \
     && ./Allwmake
 
 # prepare 3rd party
@@ -61,7 +63,7 @@ RUN cd $WM_THIRD_PARTY_DIR \
     && sed -i -e 's=/bin/sh=/bin/bash=' makeCmake \
     && ./makeCmake cmake-2.8.12.1 \
     && sed -i -e 's=cmake-2\.8\.4=cmake-2.8.12.1 cmake-2.8.4=' $WM_PROJECT_DIR/etc/config/paraview.sh \
-    && source $HOME/OpenFOAM/OpenFOAM-2.1.x/etc/bashrc WM_NCOMPPROCS=4 WM_MPLIB=SYSTEMOPENMPI WM_COMPILER=Gcc47 \
+    && source /etc/bash.bashrc \
     && sed -i -e 's=//#define GLX_GLXEXT_LEGACY=#define GLX_GLXEXT_LEGACY=' \
       ParaView-3.12.0/VTK/Rendering/vtkXOpenGLRenderWindow.cxx \
     && sed -i -e 's/ClearAndSelect = Clear | Select/ClearAndSelect = static_cast<int>(Clear) | static_cast<int>(Select)/' \
@@ -80,12 +82,6 @@ RUN cd $FOAM_UTILITIES/postProcessing/graphics/PV3Readers \
 
 # go back to normal shell
 SHELL ["/bin/sh", "-c"]
-# mv installation to opt (readable by all users)
-# bashrc will be in /opt/OpenFOAM/OpenFOAM-2.1.x/etc/bashrc
-RUN mv $HOME/OpenFOAM /opt/OpenFOAM \
-    && sed -i -e 's@foamInstall=$HOME@foamInstall=/opt@' /opt/OpenFOAM/OpenFOAM-2.1.x/etc/bashrc \
-    && rm -rf /root/.bashrc
-
 
 # python
 ENV PYTHON_COMPAT_VERSION=3.6
@@ -111,6 +107,7 @@ RUN $PIP_INSTALL PyFoam==2020.5
 RUN ldconfig && \
     apt-get clean && \
     apt-get -y autoremove && \
-    rm -rf /var/lib/apt/lists/* /tmp/*
+    rm -rf /var/lib/apt/lists/* /tmp/* && \
+    cd $FOAM_INST_DIR/ThirdParty-2.1.x && rm -rf download
 
-ENTRYPOINT ["/bin/bash", "--rcfile", "/opt/OpenFOAM/OpenFOAM-2.1.x/etc/bashrc"]
+#ENTRYPOINT ["/bin/bash", "--rcfile", "/etc/bash.bashrc"]
