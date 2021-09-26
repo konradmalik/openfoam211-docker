@@ -1,6 +1,4 @@
-FROM ubuntu:16.04
-# 18.04 does not work as it uses gcc 4.8 and it fails to build openfoam 211
-# even when following instructions on wiki for 18.04
+FROM ubuntu:18.04
 
 ENV LANG=C.UTF-8 \
     DEBIAN_FRONTEND=noninteractive \
@@ -12,7 +10,7 @@ ENV LANG=C.UTF-8 \
 RUN eval $APT_INSTALL \
     build-essential binutils-dev flex bison zlib1g-dev qt4-dev-tools libqt4-dev libqtwebkit-dev gnuplot \
     libreadline-dev libncurses-dev libxt-dev libopenmpi-dev openmpi-bin libboost-system-dev libboost-thread-dev libgmp-dev \
-    libmpfr-dev python python-dev libcgal-dev gcc-4.7 g++-4.7 libglu1-mesa-dev libqt4-opengl-dev \
+    libmpfr-dev python python-dev libcgal-dev gcc-4.8 g++-4.8 libglu1-mesa-dev libqt4-opengl-dev \
     # my addition
     ca-certificates wget make cmake vim nano sudo git mc
 
@@ -23,7 +21,7 @@ ARG FOAM_INST_DIR=/opt/OpenFOAM
 ENV WM_NCOMPPROCS=${WM_NCOMPPROCS} \
     FOAM_INST_DIR=${FOAM_INST_DIR} \
     WM_MPLIB=SYSTEMOPENMPI \
-    WM_COMPILER=Gcc47
+    WM_COMPILER=Gcc48
 
 # clone code
 RUN mkdir -p $FOAM_INST_DIR \
@@ -37,10 +35,11 @@ RUN mkdir -p $FOAM_INST_DIR \
     && tar -xzf download/ParaView-3.12.0.tar.gz \
     && tar -xzf download/scotch_5.1.11.tar.gz \
     && cd $FOAM_INST_DIR \
-    && sed -i -e 's/gcc/gcc-4.7/' OpenFOAM-2.1.x/wmake/rules/linux64Gcc47/c \
-    && sed -i -e 's/g++/g++-4.7/' OpenFOAM-2.1.x/wmake/rules/linux64Gcc47/c++ \
-    && echo "export WM_CC='gcc-4.7'" >> OpenFOAM-2.1.x/etc/bashrc \
-    && echo "export WM_CXX='g++-4.7'" >> OpenFOAM-2.1.x/etc/bashrc \
+    && cp -a OpenFOAM-2.1.x/wmake/rules/linux64Gcc47 OpenFOAM-2.1.x/wmake/rules/linux64Gcc48 \
+    && sed -i -e 's/gcc/gcc-4.8/' OpenFOAM-2.1.x/wmake/rules/linux64Gcc48/c \
+    && sed -i -e 's/g++/g++-4.8/' OpenFOAM-2.1.x/wmake/rules/linux64Gcc48/c++ \
+    && echo "export WM_CC='gcc-4.8'" >> OpenFOAM-2.1.x/etc/bashrc \
+    && echo "export WM_CXX='g++-4.8'" >> OpenFOAM-2.1.x/etc/bashrc \
     && sed -i -e "s/WM_COMPILER=Gcc/WM_COMPILER=$WM_COMPILER/" OpenFOAM-2.1.x/etc/bashrc \
     && sed -i -e "s/WM_MPLIB=OPENMPI/WM_MPLIB=$WM_MPLIB/" OpenFOAM-2.1.x/etc/bashrc \
     && source $FOAM_INST_DIR/OpenFOAM-2.1.x/etc/bashrc \
